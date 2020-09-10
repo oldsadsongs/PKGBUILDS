@@ -1,0 +1,77 @@
+pkgname=filebeat-oss
+pkgver=7.8.1
+pkgrel=1
+pkgdesc='Collects, pre-processes, and forwards log files from remote sources (precompiled)'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('APACHE')
+backup=("etc/filebeat/filebeat.yml")
+optdepends=('elasticsearch: for running standalone installation')
+install="filebeat.install"
+options=('!strip')
+provides=('filebeat')
+conflicts=('filebeat-bin')
+source=("filebeat.install"
+        "filebeat.service"
+        "filebeat.sysusers")
+sha256sums=('ec5ea00ff6204467639b7d1484332e63d85be4e131f065885a225b6a56db4767'
+            'c9d5fc8ff09cd636845ccfcef283a38574ab4f0a32e720c4c0717869f3dbebe0'
+            '33feb3690f8b31563cc1e2da557c2aa326501ce9ccd7e0a142036902bfdb05ff')
+
+source=("beats::git+https://github.com/elastic/beats.git")
+sha256sums=('SKIP')
+commitver=('94f7632be5d56a7928595da79f4b829ffe123744')
+
+prepare() {
+        echo "checkingout beats..."
+        cd $srcdir/beats
+        git checkout $commitver
+        cd /home/brushyourteeth/go/src/github.com/elastic/beats
+        git checkout $commitver
+}
+
+build() {
+        echo "building beats..."
+        cd $HOME/go/src/github.com/elastic/beats/filebeat
+        make clean
+        make filebeat
+        make fields
+        make update
+        echo "beat created!"
+}
+
+package() {
+
+    cd "$HOME/go/src/github.com/elastic/beats/filebeat"
+        echo "back to the source"
+
+    for d in lib log ; do
+        mkdir -p "$pkgdir/var/$d/filebeat"
+    done
+        echo "prepared var"
+
+    install -D -m755 filebeat     "$pkgdir/usr/bin/filebeat"
+        echo "got the bin"
+
+    for f in filebeat.{,reference.}yml fields.yml ; do
+      install -D -m644 $f "$pkgdir/etc/filebeat/$f"
+    done
+        echo "config this"
+
+    for f in README.md ; do
+      install -D -m644 $f "$pkgdir/usr/share/filebeat/$f"
+    done
+        echo "whats up docs"
+
+    cp -r build/kibana "$pkgdir/usr/share/filebeat"
+        echo "on the dashboards"
+    cp -r module "$pkgdir/usr/share/filebeat"
+    cp -r modules.d "$pkgdir/etc/filebeat"
+
+    install -D -m644 "$srcdir/../filebeat.service" \
+                     "$pkgdir/usr/lib/systemd/system/filebeat.service"
+
+    # See man page for sysusers.d(5)
+    install -D -m644 "$srcdir/../filebeat.sysusers" \
+                     "$pkgdir/usr/lib/sysusers.d/filebeat.conf"
+}
