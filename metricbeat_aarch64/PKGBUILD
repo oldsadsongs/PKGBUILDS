@@ -1,0 +1,39 @@
+pkgname=metricbeat
+pkgver=7.9.1
+pkgrel=1
+pkgdesc='Fetches sets of metrics from the operating system and services'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('ELASTIC')
+optdepends=('elasticsearch: for running standalone installation')
+options=('!strip')
+provides=('metricbeat')
+conflicts=('metricbeat-bin' 'metricbeat-oss')
+source=("https://artifacts.elastic.co/downloads/beats/$pkgname/$pkgname-$pkgver-$arch.rpm")
+sha256sums=('a9d28744bb2ff5f5410d549b433c6e46c9d0d2430381617774265d4f5636bcfb')
+
+backup=('etc/metricbeat/metricbeat.yml'
+        'etc/metricbeat/modules.d/system.yml')
+
+package() {
+        echo "it's christmas time, opening the package now."
+        cd "$pkgdir"
+
+        echo "making some directories."
+        install -dm2750 etc/$pkgname
+        install -dm755 usr/lib/systemd/system
+        install -dm755 {usr/share,var/lib,var/log}/$pkgname
+        install -dm755 usr/bin
+
+        echo "time to make some copies."
+        cd "$srcdir"
+        
+        echo "copying etc"
+        cp -R etc/$pkgname $pkgdir/etc
+
+        echo "copying lib"
+        cp -R lib $pkgdir/usr
+
+        echo "copying usr"
+        cp -R usr $pkgdir
+}
