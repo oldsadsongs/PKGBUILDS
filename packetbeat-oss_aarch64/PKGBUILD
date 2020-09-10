@@ -1,0 +1,77 @@
+pkgname=packetbeat-oss
+pkgver=7.8.1
+pkgrel=1
+pkgdesc='Monitors the network and applications by sniffing packets.'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('APACHE')
+backup=("etc/packetbeat/packetbeat.yml")
+optdepends=('elasticsearch: for running standalone installation')
+install="packetbeat.install"
+options=('!strip')
+provides=('packetbeat')
+conflicts=('packetbeat-bin')
+source=("packetbeat.install"
+        "packetbeat.service"
+        "packetbeat.sysusers")
+sha256sums=('ed2e9ed79346766b45b57e2c01145127edd30cad6ccc5aeb57501f740c759b27'
+            '0d39b9a4e2dada1b7b74bea87ac90eeeb268f564d8c7b6c6519e06844809a1a7'
+            '39b1cddd0d34faa99a939f3b61f5cc978ae4e14194b6b658420b09aae91b7569')
+
+source=("beats::git+https://github.com/elastic/beats.git")
+sha256sums=('SKIP')
+commitver='94f7632be5d56a7928595da79f4b829ffe123744'
+
+prepare() {
+        echo "checkingout beats..."
+        cd $srcdir/beats
+        git checkout $commitver
+        cd /home/brushyourteeth/go/src/github.com/elastic/beats
+        git checkout $commitver
+}
+
+build() {
+        echo "building beats..."
+        cd $HOME/go/src/github.com/elastic/beats/packetbeat
+        make clean
+        make packetbeat
+        make fields
+        make update
+        echo "beat created!"
+}
+
+package() {
+
+    cd "$HOME/go/src/github.com/elastic/beats/packetbeat"
+        echo "back to the source"
+
+    for d in lib log ; do
+        mkdir -p "$pkgdir/var/$d/packetbeat"
+    done
+        echo "prepared var"
+
+    install -D -m755 packetbeat     "$pkgdir/usr/bin/packetbeat"
+        echo "got the bin"
+
+    for f in packetbeat.{,reference.}yml fields.yml ; do
+      install -D -m644 $f "$pkgdir/etc/packetbeat/$f"
+    done
+        echo "config this"
+
+    for f in README.md ; do
+      install -D -m644 $f "$pkgdir/usr/share/packetbeat/$f"
+    done
+        echo "whats up docs"
+
+    cp -r build/kibana  "$pkgdir/usr/share/packetbeat"
+        echo "on the dashboards"
+    #cp -r module "$pkgdir/usr/share/packetbeat"
+    #cp -r modules.d "$pkgdir/etc/packetbeat"
+
+    install -D -m644 "$srcdir/../packetbeat.service" \
+                     "$pkgdir/usr/lib/systemd/system/packetbeat.service"
+                     
+    # See man page for sysusers.d(5)
+    install -D -m644 "$srcdir/../packetbeat.sysusers" \
+                     "$pkgdir/usr/lib/sysusers.d/packetbeat.conf"
+}
