@@ -1,0 +1,36 @@
+pkgname=mongodb-tools
+pkgver=4.0.19
+pkgrel=1
+pkgdesc="The MongoDB tools provide import, export, and diagnostic capabilities."
+arch=('x86_64' 'aarch64')
+url="https://github.com/mongodb/mongo-tools"
+license=('Apache')
+depends=('libpcap' 'pkgconf')
+makedepends=('go-pie')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/mongodb/mongo-tools/archive/r${pkgver}.tar.gz")
+sha512sums=('2639cb27a5a27e405bddf9817f409af244d643a9091f7e5ddff4876966af55b6710b0fe158c351df9aea10f3da0b87d224bfb2c962f4ca2cfe41f804cb16749c')
+
+_tools=('bsondump' 'mongostat' 'mongofiles' 'mongoexport' 'mongoimport' 'mongorestore' 'mongodump' 'mongotop' 'mongoreplay')
+
+prepare() {
+  cd "${srcdir}"
+  install -d build/src/github.com/mongodb/bin
+  mv "mongo-tools-r${pkgver}" build/src/github.com/mongodb/mongo-tools
+}
+
+build() {
+  cd "${srcdir}/build/src/github.com/mongodb/mongo-tools"
+  GOROOT=/usr ./set_goenv.sh
+  export GOPATH="$GOPATH:$srcdir/build"
+  for tool in "${_tools[@]}"; do
+    echo "Building ${tool}..."
+    go build -o "bin/${tool}" -tags "ssl sasl" "${tool}/main/${tool}.go"
+  done
+}
+
+package() {
+  cd "${srcdir}/build/src/github.com/mongodb/mongo-tools"
+  for tool in "${_tools[@]}"; do
+    install -Dm755 "bin/${tool}" "${pkgdir}/usr/bin/${tool}"
+  done
+}
