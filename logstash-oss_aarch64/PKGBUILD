@@ -1,0 +1,86 @@
+pkgname=logstash-oss
+_pkgname=logstash
+pkgver=7.6.2
+pkgrel=1
+pkgdesc='Tool for managing events and logs'
+url='https://www.elastic.co/logstash'
+arch=('aarch64')
+license=('Apache')
+depends=('java-runtime-headless>=8' 'ruby' 'ruby-bundler' 'coreutils' 'awk')
+makedepends=('java-environment' 'git')
+provides=('logstash')
+conflicts=('logstash' 'logstash-xpack')
+backup=('etc/conf.d/logstash'
+        'etc/logstash/jvm.options'
+        'etc/logstash/log4j2.properties'
+        'etc/logstash/logstash.yml'
+        'etc/logstash/pipelines.yml')
+source=(https://github.com/elastic/logstash/archive/v${pkgver}/${_pkgname}-${pkgver}.tar.gz
+        logstash.service
+        logstash@.service
+        logstash-sysuser.conf
+        logstash-tmpfile.conf
+        bundle.config)
+noextract=(${_jrubydist})
+sha256sums=('3e0c920c4d2a3ea0ac5a5990cd163ef232d363b622012a545a640b2b7bede1e8'
+            '2b8b29297202334c784fdd7f2eb8d7e776c24c783b3c9f8387b500ab0039335c'
+            'a01ea29d4f53d785f6eb926ebfe445e64ed5b3dab5d0418848589dd79502d876'
+            '18a68a59ddb0ce19778e83b65e68dd568d65b7180bf45b4cf298fb332d69eb26'
+            '346b630484f8a35b1a549e94e53e3e151527852a29c72cc6e529221215a7f533'
+            'fe05315345e4489458c3eecac43726800109c1e390e74a14584096f6c041fee1')
+
+prepare() {
+  cd $_pkgname-${pkgver}
+  rm bin/*.bat
+  sed -e 's|LS_SETTINGS_DIR=.*|LS_SETTINGS_DIR="/etc/logstash"|' -i config/startup.options
+  sed -e '1i [ -f /etc/profile.d/jre.sh ] && . /etc/profile.d/jre.sh' -i bin/logstash.lib.sh
+
+  # remove deprecated JVM options
+  #sed 's|"-XX:+UseParNewGC", ||g' -i logstash-core/benchmarks/build.gradle
+  #sed 's|-XX:+UseParNewGC||g' -i config/jvm.options
+}
+
+build() {
+  cd $_pkgname-${pkgver}
+        export JAVA_HOME=/usr/lib/jvm/default
+        export OSS=true
+        export RELEASE=1
+
+        rake bootstrap
+        rake plugin:install-default
+
+        mkdir -p tmp/jruby-complete && \
+        unzip -q logstash-core/lib/jars/jruby-complete-9.2.11.1.jar -d tmp/jruby-complete && \
+        cp tmp/jruby-complete/META-INF/jruby.home/lib/ruby/stdlib/ffi/platform/aarch64-linux/{types,platform}.conf && \
+        zip -qr tmp/jruby-complete-9.2.11.1.jar * && \
+        cp -f tmp/jruby-complete-9.2.11.1.jar logstash-core/lib/jars/jruby-complete-9.2.11.1.jar && \
+        rm -r tmp
+
+ rm -r build ci logstash-core/{build,src,spec} qa pkg spec rakelib tools .gradle \
+        vendor/_ vendor/bundle/jruby/*/cache vendor/jruby/lib/ruby/gems/shared/cache
+}
+
+package() {
+  cd $_pkgname-${pkgver}
+
+  install -dm 755 "${pkgdir}/usr/share/logstash" "${pkgdir}/etc/conf.d"
+  mv config/startup.options "${pkgdir}/etc/conf.d/logstash"
+  mv config "${pkgdir}/etc/logstash"
+  chmod 750 "${pkgdir}/etc/logstash"
+
+  cp -a bin data lib logstash* modules vendor Gemfile* "${pkgdir}/usr/share/logstash"
+  rm -rf "${pkgdir}/usr/share/logstash/logstash-core/"{.lock,benchmarks,*gradle*}
+  chmod -R go-w "${pkgdir}/usr/share/logstash/"
+
+  install -Dm 644 "${srcdir}"/{logstash.service,logstash@.service} -t "${pkgdir}/usr/lib/systemd/system"
+  install -Dm 644 "${srcdir}/logstash-sysuser.conf" "${pkgdir}/usr/lib/sysusers.d/logstash.conf"
+  install -Dm 644 "${srcdir}/logstash-tmpfile.conf" "${pkgdir}/usr/lib/tmpfiles.d/logstash.conf"
+  install -Dm 644 "${srcdir}/bundle.config" "${pkgdir}/usr/share/logstash/.bundle/config"
+
+  install -dm 755 "${pkgdir}/var/lib/logstash"
+  install -dm 755 "${pkgdir}/var/log/logstash"
+  install -dm 755 "${pkgdir}/etc/logstash/conf.d"
+
+  install -d "${pkgdir}/usr/bin"
+  ln -s /usr/share/logstash/bin/logstash "${pkgdir}/usr/bin/logstash"
+}
