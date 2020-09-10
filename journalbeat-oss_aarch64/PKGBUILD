@@ -1,0 +1,76 @@
+pkgname=journalbeat-oss
+pkgver=7.8.1
+pkgrel=1
+pkgdesc='Collects, pre-processes, and forwards log files from remote sources (precompiled)'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('APACHE')
+backup=("etc/journalbeat/journalbeat.yml")
+optdepends=('elasticsearch: for running standalone installation')
+install="journalbeat.install"
+options=('!strip')
+provides=('journalbeat')
+conflicts=('journalbeat-bin')
+source=("journalbeat.install"
+        "journalbeat.service"
+        "journalbeat.sysusers")
+sha256sums=('ed2e9ed79346766b45b57e2c01145127edd30cad6ccc5aeb57501f740c759b27'
+            '0d39b9a4e2dada1b7b74bea87ac90eeeb268f564d8c7b6c6519e06844809a1a7'
+            '39b1cddd0d34faa99a939f3b61f5cc978ae4e14194b6b658420b09aae91b7569')
+
+source=("beats::git+https://github.com/elastic/beats.git")
+sha256sums=('SKIP')
+commitver='94f7632be5d56a7928595da79f4b829ffe123744'
+
+prepare() {
+        echo "checkingout beats..."
+        cd $srcdir/beats
+        git checkout $commitver
+        cd /home/brushyourteeth/go/src/github.com/elastic/beats
+        git checkout $commitver
+}
+
+build() {
+        echo "building beats..."
+        cd $HOME/go/src/github.com/elastic/beats/journalbeat
+        make clean
+        make journalbeat
+        make fields
+        #make update
+        echo "beat created!"
+}
+
+package() {
+
+    cd "$HOME/go/src/github.com/elastic/beats/journalbeat"
+        echo "back to the source"
+
+    for d in lib log ; do
+        mkdir -p "$pkgdir/var/$d/journalbeat"
+    done
+        echo "prepared var"
+
+    install -D -m755 journalbeat     "$pkgdir/usr/bin/journalbeat"
+        echo "got the bin"
+
+    for f in journalbeat.{,reference.}yml fields.yml ; do
+      install -D -m644 $f "$pkgdir/etc/journalbeat/$f"
+    done
+        echo "config this"
+
+    for f in README.md ; do
+      install -D -m644 $f "$pkgdir/usr/share/journalbeat/$f"
+    done
+        echo "whats up docs"
+
+    cp -r _meta/kibana "$pkgdir/usr/share/journalbeat"
+    #cp -r module "$pkgdir/usr/share/journalbeat"
+    #cp -r modules.d "$pkgdir/etc/journalbeat"
+
+    install -D -m644 "$srcdir/../journalbeat.service" \
+                     "$pkgdir/usr/lib/systemd/system/journalbeat.service"
+
+    # See man page for sysusers.d(5)
+    install -D -m644 "$srcdir/../journalbeat.sysusers" \
+                     "$pkgdir/usr/lib/sysusers.d/journalbeat.conf"
+}
