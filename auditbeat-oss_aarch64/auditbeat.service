@@ -1,0 +1,15 @@
+[Unit]
+Description=auditbeat
+Documentation=https://www.elastic.co/guide/en/beats/auditbeat/current
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/auditbeat -c /etc/auditbeat/auditbeat.yml \
+                            -path.config /etc/auditbeat \
+                            -path.home /usr/share/auditbeat \
+                            -path.data /var/lib/auditbeat \
+                            -path.logs /var/log/auditbeat
+User=auditbeat
+
+[Install]
+WantedBy=multi-user.target
