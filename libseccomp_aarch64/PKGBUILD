@@ -1,0 +1,42 @@
+pkgname=libseccomp
+pkgver=2.5.0
+pkgrel=1
+pkgdesc='Enhanced seccomp library'
+arch=('aarch64')
+license=('LGPL2.1')
+url="https://github.com/seccomp/libseccomp"
+depends=('glibc')
+checkdepends=('valgrind')
+makedepends=('git')
+provides=('libseccomp.so')
+source=("git+https://github.com/seccomp/${pkgname}?signed#tag=v${pkgver}")
+sha256sums=('SKIP')
+validpgpkeys=('7100AADFAE6E6E940D2E0AD655E45A5AE8CA7C8A') # Paul Moore <paul@paul-moore.com>
+
+pkgver() {
+  cd ${pkgname}
+  git describe --tags --match 'v*' | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd ${pkgname}
+  test "$(git rev-parse HEAD)" = "f13f58efc690493fe7aa69f54cb52a118f3769c1"
+}
+
+build() {
+  cd ${pkgname}
+  autoreconf -fiv
+  ./configure --prefix=/usr
+  make
+}
+
+check() {
+  cd ${pkgname}
+  make check
+}
+
+package() {
+  cd ${pkgname}
+  make DESTDIR="${pkgdir}" install
+  install -Dm 644 CHANGELOG README.md SECURITY.md -t "${pkgdir}/usr/share/doc/${pkgname}"
+}
