@@ -27,12 +27,12 @@ package() {
         echo "time to make some copies."
         cd "$srcdir"
         
-        echo "coping etc"
+        echo "copying etc"
         cp -R etc/$pkgname $pkgdir/etc
 
-        echo "coping lib"
+        echo "copying lib"
         cp -R lib $pkgdir/usr
 
-        echo "coping usr"
+        echo "copying usr"
         cp -R usr $pkgdir
 }
