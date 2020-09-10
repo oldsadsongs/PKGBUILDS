@@ -1,0 +1,80 @@
+pkgname=auditbeat-oss
+pkgver=7.7.1
+pkgrel=1
+pkgdesc='Collect your Linux audit framework data and monitor the integrity of your files.'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('APACHE')
+backup=("etc/auditbeat/auditbeat.yml")
+optdepends=('elasticsearch: for running standalone installation')
+install="auditbeat.install"
+options=('!strip')
+provides=('auditbeat')
+conflicts=('auditbeat-bin')
+source=("auditbeat.install"
+        "auditbeat.service"
+        "auditbeat.sysusers")
+sha256sums=('ec5ea00ff6204467639b7d1484332e63d85be4e131f065885a225b6a56db4767'
+            'c9d5fc8ff09cd636845ccfcef283a38574ab4f0a32e720c4c0717869f3dbebe0'
+            '33feb3690f8b31563cc1e2da557c2aa326501ce9ccd7e0a142036902bfdb05ff')
+
+source=("beats::git+https://github.com/elastic/beats.git")
+sha256sums=('SKIP')
+commitver=('932b273e8940575e15f10390882be205bad29e1f')
+
+prepare() {
+        echo "checkingout beats..."
+        cd $srcdir/beats
+        git checkout $commitver
+        cd /home/brushyourteeth/go/src/github.com/elastic/beats
+        git checkout $commitver
+}
+
+build() {
+        echo "building beats..."
+        cd $HOME/go/src/github.com/elastic/beats/auditbeat
+        make clean
+        make auditbeat
+        make config
+        make fields
+        make update
+        echo "beat created!"
+}
+
+package() {
+
+    cd "$HOME/go/src/github.com/elastic/beats/auditbeat"
+        echo "back to the source"
+
+    for d in lib log ; do
+        mkdir -p "$pkgdir/var/$d/auditbeat"
+    done
+        echo "prepared var"
+
+    install -D -m755 auditbeat     "$pkgdir/usr/bin/auditbeat"
+        echo "got the bin"
+
+    for f in auditbeat.{,reference.}yml fields.yml ; do
+      install -D -m644 $f "$pkgdir/etc/auditbeat/$f"
+    done
+        echo "config this"
+
+   #NOTE: Can't find docs!
+   # for f in README.md ; do
+   #   install -D -m644 $f "$pkgdir/usr/share/auditbeat/$f"
+   # done
+   #     echo "whats up docs"
+
+    mkdir -p "$pkgdir/usr/share/auditbeat"
+    cp -r build/kibana "$pkgdir/usr/share/auditbeat"
+        echo "on the dashboards"
+    cp -r module/auditd/_meta/audit.rules.d "$pkgdir/etc/auditbeat"
+    rm "$pkgdir/etc/auditbeat/audit.rules.d/sample-rules-linux-32bit.conf"
+    mv "$pkgdir/etc/auditbeat/audit.rules.d/sample-rules-linux-64bit.conf" "$pkgdir/etc/auditbeat/audit.rules.d/sample-rules.conf.disabled"
+    install -D -m644 "$srcdir/../auditbeat.service" \
+                     "$pkgdir/usr/lib/systemd/system/auditbeat.service"
+
+    # See man page for sysusers.d(5)
+    install -D -m644 "$srcdir/../auditbeat.sysusers" \
+                     "$pkgdir/usr/lib/sysusers.d/auditbeat.conf"
+}
