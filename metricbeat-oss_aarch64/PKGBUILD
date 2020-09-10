@@ -1,0 +1,78 @@
+pkgname=metricbeat-oss
+pkgver=7.8.1
+pkgrel=1
+pkgdesc='Fetches sets of metrics from the operating system and services'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('APACHE')
+backup=("etc/metricbeat/metricbeat.yml")
+optdepends=('elasticsearch: for running standalone installation')
+install="metricbeat.install"
+options=('!strip')
+provides=('metricbeat')
+conflicts=('metricbeat-bin')
+source=("metricbeat.install"
+        "metricbeat.service"
+        "metricbeat.sysusers")
+sha256sums=('ed2e9ed79346766b45b57e2c01145127edd30cad6ccc5aeb57501f740c759b27'
+            '0d39b9a4e2dada1b7b74bea87ac90eeeb268f564d8c7b6c6519e06844809a1a7'
+            '39b1cddd0d34faa99a939f3b61f5cc978ae4e14194b6b658420b09aae91b7569')
+
+source=("beats::git+https://github.com/elastic/beats.git")
+sha256sums=('SKIP')
+commitver='94f7632be5d56a7928595da79f4b829ffe123744'
+
+prepare() {
+        echo "checkingout beats..."
+        cd $srcdir/beats
+        git checkout $commitver
+        cd /home/brushyourteeth/go/src/github.com/elastic/beats
+        git checkout $commitver
+}
+
+build() {
+        echo "building beats..."
+        cd $HOME/go/src/github.com/elastic/beats/metricbeat
+        mage clean #make clean
+        mage build #make metricbeat
+        mage fields #make fields
+        mage dashboards #testing
+        #make update
+        echo "beat created!"
+}
+
+package() {
+
+    cd "$HOME/go/src/github.com/elastic/beats/metricbeat"
+        echo "back to the source"
+
+    for d in lib log ; do
+        mkdir -p "$pkgdir/var/$d/metricbeat"
+    done
+        echo "prepared var"
+
+    install -D -m755 metricbeat     "$pkgdir/usr/bin/metricbeat"
+        echo "got the bin"
+
+    for f in metricbeat.{,reference.}yml fields.yml ; do
+      install -D -m644 $f "$pkgdir/etc/metricbeat/$f"
+    done
+        echo "config this"
+
+    for f in README.md ; do
+      install -D -m644 $f "$pkgdir/usr/share/metricbeat/$f"
+    done
+        echo "whats up docs"
+
+    cp -r build/kibana "$pkgdir/usr/share/metricbeat"
+        echo "on the dashboards"
+    cp -r module "$pkgdir/usr/share/metricbeat"
+    cp -r modules.d "$pkgdir/etc/metricbeat"
+
+    install -D -m644 "$srcdir/../metricbeat.service" \
+                     "$pkgdir/usr/lib/systemd/system/metricbeat.service"
+
+    # See man page for sysusers.d(5)
+    install -D -m644 "$srcdir/../metricbeat.sysusers" \
+                     "$pkgdir/usr/lib/sysusers.d/metricbeat.conf"
+}
