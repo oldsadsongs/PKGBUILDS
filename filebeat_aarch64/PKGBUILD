@@ -1,0 +1,38 @@
+pkgname=filebeat
+pkgver=7.9.1
+pkgrel=1
+pkgdesc='Collects, pre-processes, and forwards log files from remote sources (precompiled)'
+arch=('aarch64')
+url="https://www.elastic.co/products/beats"
+license=('ELASTIC')
+optdepends=('elasticsearch: for running standalone installation')
+options=('!strip')
+provides=('filebeat')
+conflicts=('filebeat-bin' 'filebeat-oss')
+source=("https://artifacts.elastic.co/downloads/beats/$pkgname/$pkgname-$pkgver-$arch.rpm")
+sha256sums=('2117454e5722ef174486f2456a5b2793ac09c130270a40f6b50a2ae8662df6ce')
+
+backup=('etc/filebeat/filebeat.yml')
+
+package() {
+        echo "it's christmas time, opening the pacakge now."
+        cd "$pkgdir"
+
+        echo "making some directories."
+        install -dm2750 etc/$pkgname
+        install -dm755 usr/lib/systemd/system
+        install -dm755 {usr/share,var/lib,var/log}/$pkgname
+        install -dm755 usr/bin
+
+        echo "time to make some copies."
+        cd "$srcdir"
+        
+        echo "coping etc"
+        cp -R etc/$pkgname $pkgdir/etc
+
+        echo "coping lib"
+        cp -R lib $pkgdir/usr
+
+        echo "coping usr"
+        cp -R usr $pkgdir
+}
