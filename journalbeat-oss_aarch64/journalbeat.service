@@ -1,0 +1,15 @@
+[Unit]
+Description=journalbeat
+Documentation=https://www.elastic.co/guide/en/beats/journalbeat/current
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/journalbeat -c /etc/journalbeat/journalbeat.yml \
+                            -path.config /etc/journalbeat \
+                            -path.home /usr/share/journalbeat \
+                            -path.data /var/lib/journalbeat \
+                            -path.logs /var/log/journalbeat
+User=journalbeat
+
+[Install]
+WantedBy=multi-user.target
