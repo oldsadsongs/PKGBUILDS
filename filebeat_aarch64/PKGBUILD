@@ -15,7 +15,7 @@ sha256sums=('2117454e5722ef174486f2456a5b2793ac09c130270a40f6b50a2ae8662df6ce')
 backup=('etc/filebeat/filebeat.yml')
 
 package() {
-        echo "it's christmas time, opening the pacakge now."
+        echo "it's christmas time, opening the package now."
         cd "$pkgdir"
 
         echo "making some directories."
